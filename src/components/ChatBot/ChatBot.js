@@ -122,7 +122,7 @@ const ChatBot = () => {
             />
           </div>
         )}
-        {isLoading && <LoadingWidget />}
+        {isStart && isLoading && <LoadingWidget />}
         <div ref={messagesEndRef} />
       </div>
       {isStart && (
