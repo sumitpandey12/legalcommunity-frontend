@@ -1,4 +1,4 @@
-import React, { useEffect, useState,useRef} from "react";
+import React, { useEffect, useState, useRef } from "react";
 import NewInput from "../../Utils/NewInput";
 import Avatar from "../../Utils/Avatars";
 import Utils from "../../Utils/Utils";
@@ -16,32 +16,50 @@ const ChatBot = () => {
   const [isStart, setStart] = React.useState(false);
   const navigate = useNavigate();
   const messagesRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const [isLoading, setLoading] = React.useState(false);
 
   const createChat = async () => {
     console.log("create chat");
     const response = await chatController.createChat();
     let id = response.id;
-    localStorage.setItem('chatID', id);
+    localStorage.setItem("chatID", id);
     loop();
   };
 
-  const loop = () =>{
-    setInterval(function() {
-      console.log("looping...")
+  const loop = () => {
+    setInterval(function () {
+      console.log("looping...");
       loadChatHistory();
-      }, 2000);
-  }
+    }, 2000);
+  };
 
   const loadChatHistory = async () => {
-    const id = localStorage.getItem('chatID')
+    const id = localStorage.getItem("chatID");
     const res = await chatController.getMessages({
       chat_id: id,
     });
     setChats(res);
   };
 
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+    setLoadingIndicator();
+  }, [chats]);
+
+  const setLoadingIndicator = () => {
+    if (chats.length % 2 !== 0) {
+      console.log("Loading false because length is odd", chats.length);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+  };
+
   const sendMessage = async (message) => {
-    const id = localStorage.getItem('chatID')
+    const id = localStorage.getItem("chatID");
     const res = await chatController.addMessage({
       chat_id: id,
       message_type: "Text",
@@ -49,47 +67,49 @@ const ChatBot = () => {
     });
   };
 
-
-  const urlify=(text)=> {
+  const urlify = (text) => {
     const urlRegex = /(http?:\/\/[^\s]+)/g;
-    return text.split(urlRegex)
-       .map(part => {
-        part=part.replace("("," ");
-        part=part.replace(").","");
-          if(part.match(urlRegex)) {
-             return <a href={part}>{part}</a>;
-          }
-          return part;
-       });
-  }
-
-  const scrollToBottom = () => {
-    messagesRef.current?.scrollIntoView({ behavior: "smooth" });
+    return text.split(urlRegex).map((part) => {
+      part = part.replace("(", " ");
+      part = part.replace(").", "");
+      if (part.match(urlRegex)) {
+        return <a href={part}>{part}</a>;
+      }
+      return part;
+    });
   };
 
   return (
     <div className="relative w-full h-full flex flex-col ">
-      <div className="h-full mb-24 p-4 overflow-y-auto hide-scrollbar" ref={messagesRef}>
-        {authContext.isLogined ? (isStart?  (
-         chats&& chats.map((chat, index) => (
-            <Chat
-              key={index}
-              user={chat.sender_id == authContext.user.id}
-              message={urlify(chat.message)}
-            />
-          ))
-        ):<div className="w-full h-full flex flex-col justify-center items-center gap-2">
-        <div className="text-white text-lg font-semibold">
-          Welcome, to the AI Expert. Click to start the chat.
-        </div>
-        <Button
-          title="Start"
-          onClick={() => {
-            setStart(true);
-            createChat()
-          }}
-        />
-      </div>) : (
+      <div
+        className="h-full mb-24 p-4 overflow-y-auto hide-scrollbar"
+        ref={messagesRef}
+      >
+        {authContext.isLogined ? (
+          isStart ? (
+            chats &&
+            chats.map((chat, index) => (
+              <Chat
+                key={index}
+                user={chat.sender_id == authContext.user.id}
+                message={urlify(chat.message)}
+              />
+            ))
+          ) : (
+            <div className="w-full h-full flex flex-col justify-center items-center gap-2">
+              <div className="text-white text-lg font-semibold">
+                Welcome, to the AI Expert. Click to start the chat.
+              </div>
+              <Button
+                title="Start"
+                onClick={() => {
+                  setStart(true);
+                  createChat();
+                }}
+              />
+            </div>
+          )
+        ) : (
           <div className="w-full h-full flex flex-col justify-center items-center gap-2">
             <div className="text-white text-lg font-semibold">
               Welcome, to the AI Expert. Login to get reponses.
@@ -102,18 +122,45 @@ const ChatBot = () => {
             />
           </div>
         )}
+        {isLoading && <LoadingWidget />}
+        <div ref={messagesEndRef} />
       </div>
-      {isStart && <div
-        style={{ backgroundColor: Utils.color.primary }}
-        className="w-full fixed bottom-0 left-32 inset-x-0 flex justify-center"
-      >
-        <NewInput
-          onSend={sendMessage}
-          placeholder="Type here..."
-          className="w-2/3 my-3"
-          disabled={!authContext.isLogined}
-        />
-      </div>}
+      {isStart && (
+        <div
+          style={{ backgroundColor: Utils.color.primary }}
+          className="w-full fixed bottom-0 left-32 inset-x-0 flex justify-center"
+        >
+          <NewInput
+            onSend={sendMessage}
+            placeholder="Type here..."
+            className="w-2/3 my-3"
+            disabled={!authContext.isLogined}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const LoadingWidget = () => {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <Avatar
+        image={
+          "https://images.unsplash.com/photo-1489980557514-251d61e3eeb6?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        }
+        className={"w-6 h-6"}
+      />
+      <span class="relative flex h-6 w-6">
+        <span
+          style={{ backgroundColor: Utils.color.tertiary }}
+          class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"
+        ></span>
+        <span
+          style={{ backgroundColor: Utils.color.tertiary }}
+          class="relative inline-flex rounded-full h-6 w-6"
+        ></span>
+      </span>
     </div>
   );
 };
@@ -134,14 +181,16 @@ const Chat = ({ user, message }) => {
 
       <p
         dangerouslySetInnerHTML={{ __html: message }}
-        style={{ backgroundColor: user?Utils.color.secondary:Utils.color.tertiary,whiteSpace:"pre-line"}}
+        style={{
+          backgroundColor: user ? Utils.color.secondary : Utils.color.tertiary,
+          whiteSpace: "pre-line",
+        }}
         className={`${
           user
             ? "bg-amber-950 text-white rounded-bl-xl"
             : "bg-amber-100 rounded-br-xl"
         } rounded-tl-xl max-w-3xl  rounded-tr-xl px-4 py-2`}
-      >
-      </p>
+      ></p>
     </div>
   );
 };
